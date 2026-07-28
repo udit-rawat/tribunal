@@ -1,0 +1,12 @@
+{"claim": "The Great Wall of China is visible from space with the naked eye.", "expected": "False"}
+{"claim": "Water boils at 100 degrees Celsius at sea level.", "expected": "True"}
+{"claim": "Humans only use 10 percent of their brains.", "expected": "False"}
+{"claim": "The Eiffel Tower can grow taller in summer due to thermal expansion.", "expected": "True"}
+{"claim": "Goldfish have a memory span of only three seconds.", "expected": "False"}
+{"claim": "Mount Everest is the tallest mountain on Earth measured from base to peak.", "expected": "False", "note": "Base-to-peak, Mauna Kea is tallest; Everest is highest above sea level. Claim as worded is False."}
+{"claim": "Lightning never strikes the same place twice.", "expected": "False"}
+{"claim": "The human body has 206 bones in adulthood.", "expected": "True"}
+{"claim": "Bananas grow on trees.", "expected": "Misleading"}
+{"claim": "Napoleon Bonaparte was extremely short for his time.", "expected": "False"}
+{"claim": "Honey never spoils if stored properly.", "expected": "True"}
+{"claim": "There will be a manned mission to Mars in exactly 2029.", "expected": "Unverifiable"}
