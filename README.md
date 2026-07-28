@@ -55,5 +55,3 @@ python evals/run_evals.py     # verdict accuracy vs evals/golden.jsonl
 Set `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` in `.env` and every run streams a full
 hierarchical trace (per-agent spans, tokens, cost, latency, retrieved chunks) to Langfuse.
 Leave the keys blank to disable — the pipeline runs identically without it.
-
-See **PLAN.md** for architecture rationale, roadmap, and definition of done.
