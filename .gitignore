@@ -1,0 +1,10 @@
+.venv/
+.lancedb/
+.env
+__pycache__/
+*.egg-info/
+*.pyc
+.pytest_cache/
+.ragas_cache/
+dist/
+build/
