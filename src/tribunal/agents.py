@@ -125,6 +125,43 @@ def citation_verifier(state: TribunalState) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# 4b. Review Gate (human-in-the-loop, durable state)
+# --------------------------------------------------------------------------- #
+def _is_uncertain(state: TribunalState) -> bool:
+    """Uncertain = thin evidence or neither side has any verified support."""
+    if len(state.get("evidence", [])) < settings.hitl_min_evidence:
+        return True
+    verified = state.get("verified_prosecution", Brief()).arguments + state.get(
+        "verified_defense", Brief()
+    ).arguments
+    return len(verified) == 0
+
+
+def review_gate(state: TribunalState) -> dict:
+    """Pause for a human before judging low-confidence cases (only when HITL is enabled).
+
+    Uses LangGraph's dynamic `interrupt()`, so the run halts on a checkpoint and resumes
+    with whatever the reviewer passes back via `Command(resume=...)`.
+    """
+    if not settings.hitl_enabled or not _is_uncertain(state):
+        return {}
+
+    from langgraph.types import interrupt  # local import keeps core path dependency-light
+
+    note = interrupt(
+        {
+            "reason": "low-confidence: thin or unverified evidence — human review requested",
+            "claim": state["claim"],
+            "evidence_count": len(state.get("evidence", [])),
+            "prosecution_points": len(state.get("verified_prosecution", Brief()).arguments),
+            "defense_points": len(state.get("verified_defense", Brief()).arguments),
+        }
+    )
+    text = note.get("note", "") if isinstance(note, dict) else str(note or "")
+    return {"human_note": text}
+
+
+# --------------------------------------------------------------------------- #
 # 5. Judge
 # --------------------------------------------------------------------------- #
 def _format_brief(brief: Brief) -> str:
@@ -138,6 +175,13 @@ def judge(state: TribunalState) -> dict:
     """Weigh the two verified briefs and rule. Citations must come from verified evidence."""
     prosecution = state.get("verified_prosecution", Brief())
     defense = state.get("verified_defense", Brief())
+    human_note = state.get("human_note", "")
+    human_block = (
+        f"\n\nA human reviewer flagged this case and added guidance: {human_note}\n"
+        "Weigh it, but stay grounded in the verified evidence."
+        if human_note
+        else ""
+    )
     result = structured(
         model=AGENT_MODELS["judge"],
         response_model=VerdictResult,
@@ -154,6 +198,7 @@ def judge(state: TribunalState) -> dict:
             f"Claim: {state['claim']}\n\n"
             f"PROSECUTION (claim is false/unsupported):\n{_format_brief(prosecution)}\n\n"
             f"DEFENSE (claim is true/supported):\n{_format_brief(defense)}"
+            f"{human_block}"
         ),
     )
     return {"result": result}

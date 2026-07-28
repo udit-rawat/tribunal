@@ -33,6 +33,10 @@ class Settings(BaseSettings):
 
     request_timeout: int = 60
 
+    # Human-in-the-loop: pause before the Judge on low-confidence cases for a human to weigh in.
+    hitl_enabled: bool = False
+    hitl_min_evidence: int = 2  # fewer retrieved chunks than this = "uncertain", trigger review
+
 
 settings = Settings()
 

@@ -49,3 +49,19 @@ def test_citation_verifier_drops_hallucinations():
     assert len(out["verified_defense"].arguments) == 1  # real quote kept
     assert len(out["verified_prosecution"].arguments) == 0  # fabricated quote dropped
     assert out["dropped_citations"] == 1
+
+
+def test_review_gate_uncertainty_trigger():
+    """HITL gate fires on thin evidence, stays quiet when evidence is solid."""
+    from tribunal.agents import _is_uncertain
+    from tribunal.schemas import ArgumentPoint, Brief, EvidenceChunk
+
+    thin = {"evidence": [EvidenceChunk(text="one lonely chunk")]}
+    assert _is_uncertain(thin) is True  # < hitl_min_evidence (2)
+
+    solid = {
+        "evidence": [EvidenceChunk(text="a"), EvidenceChunk(text="b")],
+        "verified_defense": Brief(arguments=[ArgumentPoint(point="p", quote="q")]),
+        "verified_prosecution": Brief(),
+    }
+    assert _is_uncertain(solid) is False
