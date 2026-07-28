@@ -8,3 +8,6 @@ __pycache__/
 .ragas_cache/
 dist/
 build/
+
+# internal planning doc — keep local, never publish
+PLAN.md
