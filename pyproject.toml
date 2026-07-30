@@ -22,7 +22,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-evals = ["ragas>=0.2", "datasets>=2.19"]
+# ragas 0.4 and langchain-community 0.4 removed a module ragas imports at load time; pinned so a
+# fresh clone doesn't hit ModuleNotFoundError on langchain_community.chat_models.vertexai.
+evals = [
+    "ragas>=0.2,<0.3",
+    "langchain-openai>=0.2",
+    "langchain-community>=0.3,<0.4",
+]
 dev = ["pytest>=8.0"]
 
 [project.scripts]
