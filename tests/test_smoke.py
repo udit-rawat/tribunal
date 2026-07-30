@@ -51,6 +51,24 @@ def test_citation_verifier_drops_hallucinations():
     assert out["dropped_citations"] == 1
 
 
+def test_cache_roundtrip_and_normalisation():
+    """Cache survives whitespace/case/punctuation differences and honours namespaces."""
+    import tempfile
+
+    from tribunal import cache
+    from tribunal.config import settings
+
+    with tempfile.TemporaryDirectory() as d:
+        settings.cache_path = f"{d}/t.db"
+        cache._conn = None  # force a fresh connection at the temp path
+
+        assert cache.get("verdict", "The Sun is a star") is None
+        cache.put("verdict", "The Sun is a star", {"verdict": "True"})
+        assert cache.get("verdict", "  the sun IS a star. ") == {"verdict": "True"}
+        assert cache.get("search", "The Sun is a star") is None  # namespaces are isolated
+        cache._conn = None
+
+
 def test_search_deadline_abandons_hang():
     """A hung search must not block the request path (regression: 90-min pipeline stall)."""
     import time
