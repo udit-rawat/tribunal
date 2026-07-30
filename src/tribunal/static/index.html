@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tribunal — adversarial fact-checking</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6.5' fill='%2316161a'/%3E%3Cpath d='M4.6 6.6 L10.1 12 L4.6 17.4 Z' fill='%23fff' opacity='.92'/%3E%3Cpath d='M19.4 6.6 L13.9 12 L19.4 17.4 Z' fill='%23fff' opacity='.62'/%3E%3Crect x='11.35' y='5.2' width='1.3' height='13.6' rx='.65' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff; --bg-sub:#fafafa; --bg-alt:#f7f8fa;
+    --border:#e9e9ee; --border-strong:#d8d8e0;
+    --text:#16161a; --muted:#65656f; --faint:#9494a0;
+    --ink:#16161a;
+    --pros:#b42318; --pros-bg:#fef3f2; --pros-br:#fecdca;
+    --def:#175cd3;  --def-bg:#eff6ff;  --def-br:#bfd7fe;
+    --ok:#067647;
+    --sans:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sh-sm:0 1px 2px rgba(16,24,40,.05);
+    --sh:0 1px 3px rgba(16,24,40,.07), 0 1px 2px rgba(16,24,40,.04);
+    --sh-lg:0 8px 24px -4px rgba(16,24,40,.08), 0 2px 6px -2px rgba(16,24,40,.04);
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--sans);
+    font-size:15.5px; line-height:1.6; letter-spacing:-.006em;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit}
+
+  /* ---------- nav ---------- */
+  nav{
+    height:57px; border-bottom:1px solid var(--border); display:flex; align-items:center;
+    position:sticky; top:0; background:rgba(255,255,255,.85); backdrop-filter:blur(8px); z-index:20;
+  }
+  .nav-in{max-width:1080px;margin:0 auto;padding:0 24px;width:100%;display:flex;align-items:center;gap:12px}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.02em}
+  .logo .mk{width:23px;height:23px;color:var(--ink);flex:0 0 auto;display:block}
+  .nav-sp{flex:1}
+  .nav-link{font-size:13.5px;color:var(--muted);text-decoration:none}
+  .nav-link:hover{color:var(--text)}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 120px}
+
+  /* ---------- hero ---------- */
+  header{padding:60px 0 0;max-width:660px}
+  h1{font-size:40px;line-height:1.15;font-weight:700;letter-spacing:-.032em;margin:0 0 12px}
+  .sub{font-size:17px;color:var(--muted);margin:0}
+
+  /* ---------- input ---------- */
+  form{margin:32px 0 0;display:flex;gap:10px;max-width:760px}
+  .inp{flex:1;position:relative}
+  input[type=text]{
+    width:100%;font-family:var(--sans);font-size:15.5px;color:var(--text);
+    padding:11px 14px;border:1px solid var(--border-strong);border-radius:8px;
+    background:#fff;outline:none;box-shadow:var(--sh-sm);transition:border-color .15s,box-shadow .15s;
+  }
+  input[type=text]:focus{border-color:#a5a5b4;box-shadow:0 0 0 3.5px rgba(22,22,26,.07)}
+  input[type=text]::placeholder{color:var(--faint)}
+  button.primary{
+    background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:8px;
+    font-family:var(--sans);font-size:14.5px;font-weight:600;padding:0 20px;cursor:pointer;
+    box-shadow:var(--sh-sm);transition:opacity .15s,transform .1s;white-space:nowrap;
+  }
+  button.primary:hover:not(:disabled){opacity:.86}
+  button.primary:active:not(:disabled){transform:translateY(.5px)}
+  button.primary:disabled{opacity:.45;cursor:default}
+
+  .chips{margin:14px 0 0;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .chips .lb{font-size:13px;color:var(--faint);margin-right:2px}
+  .chip{
+    background:var(--bg-sub);border:1px solid var(--border);border-radius:999px;color:var(--muted);
+    font-family:var(--sans);font-size:13px;padding:4.5px 11px;cursor:pointer;transition:.15s;
+  }
+  .chip:hover{background:#f1f1f4;color:var(--text);border-color:var(--border-strong)}
+
+  /* ---------- live graph ---------- */
+  .graph{display:none;margin:40px 0 0;padding:12px 8px 6px;border:1px solid var(--border);
+    border-radius:var(--r);background:var(--bg-sub);overflow-x:auto}
+  .graph.on{display:block}
+  .graph svg{display:block;width:100%;min-width:660px;height:auto}
+  .gnode rect{fill:#fff;stroke:var(--border-strong);stroke-width:1.5;transition:stroke .3s,fill .3s}
+  .gnode .lbl{font:600 12.5px var(--sans);fill:var(--faint);transition:fill .3s}
+  .gnode .stat{font:400 10.5px var(--mono);fill:var(--faint);opacity:0;transition:opacity .35s}
+  .gnode .meta{font:400 9px var(--mono);fill:#b6b6c0;opacity:0;transition:opacity .4s}
+  .gnode.done .meta{opacity:1}
+  .gnode .tick{opacity:0;transition:opacity .3s}
+  .gnode.active rect{stroke:var(--ink);stroke-width:2;filter:drop-shadow(0 0 0 rgba(22,22,26,.16))}
+  .gnode.active .halo{animation:halo 1.5s ease-out infinite}
+  .gnode.active .lbl{fill:var(--text)}
+  .gnode.done rect{stroke:var(--ok);fill:#f6fef9}
+  .gnode.done .lbl{fill:var(--ok)}
+  .gnode.done .stat{opacity:1;fill:var(--muted)}
+  .gnode.done .tick{opacity:1}
+  .gnode.pros.done rect{stroke:var(--pros);fill:var(--pros-bg)} .gnode.pros.done .lbl{fill:var(--pros)}
+  .gnode.def.done  rect{stroke:var(--def); fill:var(--def-bg)}  .gnode.def.done  .lbl{fill:var(--def)}
+  @keyframes halo{0%{opacity:.5;transform:scale(1)}100%{opacity:0;transform:scale(1.06)}}
+  .gedge{fill:none;stroke:var(--border-strong);stroke-width:1.6;transition:stroke .3s}
+  .gedge.lit{stroke:var(--ok)}
+  .gedge.flow{stroke:var(--ink);stroke-dasharray:5 5;animation:flow .7s linear infinite}
+  @keyframes flow{to{stroke-dashoffset:-20}}
+  .glegend{display:flex;gap:16px;flex-wrap:wrap;padding:2px 10px 6px;font-family:var(--mono);
+    font-size:10.5px;color:var(--faint)}
+  .glegend i{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+  /* ---------- blocks ---------- */
+  section{margin:36px 0 0;animation:up .4s both}
+  @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--faint);margin:0 0 12px;font-weight:500;
+  }
+  .card{border:1px solid var(--border);border-radius:var(--r);background:#fff;box-shadow:var(--sh)}
+  .card-b{padding:18px 20px}
+
+  ol.subclaims{list-style:none;margin:0;padding:0}
+  ol.subclaims li{padding:13px 20px;border-bottom:1px solid var(--border);display:flex;gap:12px}
+  ol.subclaims li:last-child{border-bottom:none}
+  ol.subclaims .ix{
+    font-family:var(--mono);font-size:11.5px;color:var(--faint);flex:0 0 auto;
+    padding-top:3px;min-width:16px;
+  }
+  ol.subclaims .qs{display:block;margin-top:5px;font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+
+  /* tool trace */
+  .trace{border:1px solid var(--border);border-radius:var(--r);background:#fff;
+    box-shadow:var(--sh);overflow:hidden;margin:0 0 12px}
+  .trow{display:grid;grid-template-columns:96px 1fr auto auto 52px;gap:12px;align-items:center;
+    padding:8px 14px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11.5px}
+  .trow:last-child{border-bottom:none}
+  .trow .tool{color:var(--text);font-weight:500}
+  .trow .tq{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .trow .tn{color:var(--faint);font-size:10.5px;white-space:nowrap}
+  .trow .tr2{color:var(--ok);white-space:nowrap}
+  .trow .tt{color:var(--faint);text-align:right}
+  .trow.bad .tool,.trow.bad .tr2{color:var(--pros)}
+  @media (max-width:700px){.trow{grid-template-columns:1fr auto;gap:6px}.trow .tq,.trow .tn{grid-column:1/-1}}
+
+  .srcs{display:flex;flex-wrap:wrap;gap:7px}
+  .srcs a{
+    display:inline-block;font-size:12.5px;color:var(--muted);text-decoration:none;
+    background:var(--bg-sub);border:1px solid var(--border);border-radius:6px;padding:4px 9px;
+    max-width:290px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:.15s;
+  }
+  .srcs a:hover{border-color:var(--border-strong);color:var(--text)}
+
+  /* ---------- debate ---------- */
+  .debate{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .col{border:1px solid var(--border);border-radius:var(--r);background:#fff;box-shadow:var(--sh);overflow:hidden}
+  .col-h{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .col-h .bul{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  .col-h .ttl{font-size:13.5px;font-weight:700;letter-spacing:-.01em}
+  .col-h .ct{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .col.pros .col-h{background:var(--pros-bg)} .col.pros .bul{background:var(--pros)} .col.pros .ttl{color:var(--pros)}
+  .col.def  .col-h{background:var(--def-bg)}  .col.def  .bul{background:var(--def)}  .col.def  .ttl{color:var(--def)}
+  .col-s{padding:11px 18px 0;font-size:13px;color:var(--muted)}
+  .args{padding:14px 18px 18px}
+  .arg{padding:0 0 15px;margin:0 0 15px;border-bottom:1px solid var(--border);animation:up .35s both}
+  .arg:last-child{border-bottom:none;padding-bottom:0;margin-bottom:0}
+  .arg .pt{font-size:14.5px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+  .arg blockquote{
+    margin:0;padding:9px 12px;background:var(--bg-alt);border-left:2px solid var(--border-strong);
+    border-radius:0 6px 6px 0;font-size:13px;color:var(--muted);line-height:1.55;
+  }
+  .col.pros .arg blockquote{border-left-color:var(--pros-br)}
+  .col.def  .arg blockquote{border-left-color:var(--def-br)}
+  .arg .src{display:block;margin-top:7px;font-family:var(--mono);font-size:11px;color:var(--faint);
+    text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .arg .src:hover{color:var(--text);text-decoration:underline}
+  .none{font-size:13.5px;color:var(--faint);font-style:italic;padding:2px 0 0}
+  .skel{height:11px;border-radius:5px;background:linear-gradient(90deg,#f1f1f4,#e8e8ee,#f1f1f4);
+    background-size:200% 100%;animation:sk 1.3s linear infinite;margin:0 0 9px}
+  @keyframes sk{from{background-position:200% 0}to{background-position:-200% 0}}
+
+  /* ---------- stricken ---------- */
+  .struck{border:1px dashed var(--pros-br);background:var(--pros-bg);border-radius:var(--r);padding:16px 18px}
+  .struck-h{display:flex;align-items:center;gap:9px;margin:0 0 7px}
+  .badge{
+    font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--pros);border:1px solid var(--pros-br);background:#fff;border-radius:5px;padding:2.5px 7px;
+  }
+  .struck-h .h{font-size:14px;font-weight:700;letter-spacing:-.01em}
+  .struck .why{font-size:13.5px;color:var(--muted);margin:0 0 13px;max-width:70ch}
+  .struck blockquote{
+    margin:0 0 8px;padding:8px 11px;background:#fff;border:1px solid var(--pros-br);border-radius:6px;
+    font-size:12.5px;color:var(--faint);text-decoration:line-through;text-decoration-color:rgba(180,35,24,.5);
+  }
+
+  /* ---------- verdict ---------- */
+  .vcard{border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:var(--sh-lg);
+    overflow:hidden;animation:pop .35s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes pop{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}
+  .vtop{padding:20px 22px 0;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .pill{
+    display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:5px 13px 5px 10px;
+    font-size:13.5px;font-weight:700;letter-spacing:-.01em;border:1px solid;
+  }
+  .pill .pd{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .conf{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .vbody{padding:14px 22px 20px}
+  .vsum{font-size:21px;font-weight:700;line-height:1.35;letter-spacing:-.022em;margin:0 0 10px}
+  .vreason{font-size:15px;color:var(--muted);margin:0;max-width:74ch}
+  .vfoot{
+    border-top:1px solid var(--border);background:var(--bg-sub);padding:11px 22px;
+    display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;color:var(--faint);
+  }
+  .vfoot b{color:var(--pros);font-weight:500}
+  .vfoot .cachetag{color:var(--def);border:1px solid var(--def-br);background:var(--def-bg);
+    border-radius:5px;padding:1px 7px}
+
+  .err{border:1px solid var(--pros-br);background:var(--pros-bg);border-radius:var(--r);padding:16px 18px}
+  .err .h{font-size:14px;font-weight:700;color:var(--pros);margin:0 0 5px}
+  .err p{margin:0;font-size:13.5px;color:var(--muted)}
+
+  /* ---------- docket ---------- */
+  .hist{margin:44px 0 0}
+  .hist .row{
+    display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border);
+    border-radius:8px;margin-bottom:7px;cursor:pointer;background:#fff;transition:.15s;
+  }
+  .hist .row:hover{border-color:var(--border-strong);box-shadow:var(--sh-sm)}
+  .hist .tg{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:5px;border:1px solid;flex:0 0 auto}
+  .hist .tx{flex:1;font-size:14px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hist .row:hover .tx{color:var(--text)}
+
+  footer{margin:72px 0 0;padding-top:20px;border-top:1px solid var(--border);
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--faint)}
+  footer a{text-decoration:none} footer a:hover{color:var(--text)}
+
+  @media (max-width:760px){
+    .debate{grid-template-columns:1fr}
+    h1{font-size:31px}
+    form{flex-direction:column}
+    button.primary{padding:11px 20px}
+  }
+</style>
+</head>
+<body>
+
+<nav><div class="nav-in">
+  <div class="logo">
+    <svg class="mk" viewBox="0 0 24 24" aria-hidden="true">
+      <rect width="24" height="24" rx="6.5" fill="currentColor"/>
+      <path d="M4.6 6.6 L10.1 12 L4.6 17.4 Z" fill="#fff" opacity=".92"/>
+      <path d="M19.4 6.6 L13.9 12 L19.4 17.4 Z" fill="#fff" opacity=".62"/>
+      <rect x="11.35" y="5.2" width="1.3" height="13.6" rx=".65" fill="#fff"/>
+    </svg>
+    Tribunal
+  </div>
+  <div class="nav-sp"></div>
+  <a class="nav-link" href="https://github.com/udit-rawat/tribunal" target="_blank" rel="noopener">GitHub</a>
+</div></nav>
+
+<div class="wrap">
+  <header>
+    <h1>Fact-check a claim, adversarially.</h1>
+    <p class="sub">Two agents argue opposite sides from retrieved evidence. Every quote is verified against its source before a third agent rules.</p>
+  </header>
+
+  <form id="f">
+    <div class="inp">
+      <input id="claim" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Enter a factual claim…">
+    </div>
+    <button class="primary" id="go" type="submit">Verify</button>
+  </form>
+
+  <div class="chips">
+    <span class="lb">Try</span>
+    <button class="chip" type="button">Lionel Messi has won 8 Ballon d'Or awards</button>
+    <button class="chip" type="button">The Great Wall of China is visible from space with the naked eye</button>
+    <button class="chip" type="button">Bananas are radioactive</button>
+    <button class="chip" type="button">There will be a crewed landing on Mars in exactly 2029</button>
+  </div>
+
+  <div class="graph" id="graph">
+    <svg viewBox="0 0 880 232" role="img" aria-label="Live pipeline graph">
+      <defs>
+        <marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0 0 L8 4 L0 8 z" fill="#d8d8e0"/>
+        </marker>
+      </defs>
+      <g id="edges">
+        <path class="gedge" data-from="decomposer" data-to="retriever"  d="M162 117 L183 117" marker-end="url(#ar)"/>
+        <path class="gedge" data-from="retriever"  data-to="prosecutor" d="M337 117 C352 117 347 51 358 51"   marker-end="url(#ar)"/>
+        <path class="gedge" data-from="retriever"  data-to="defender"   d="M337 117 C352 117 347 183 358 183" marker-end="url(#ar)"/>
+        <path class="gedge" data-from="prosecutor" data-to="citation_verifier" d="M512 51 C527 51 522 117 533 117"  marker-end="url(#ar)"/>
+        <path class="gedge" data-from="defender"   data-to="citation_verifier" d="M512 183 C527 183 522 117 533 117" marker-end="url(#ar)"/>
+        <path class="gedge" data-from="citation_verifier" data-to="judge" d="M687 117 L708 117" marker-end="url(#ar)"/>
+      </g>
+      <g class="gnode" data-id="decomposer">
+        <rect class="halo" x="12" y="88" width="150" height="58" rx="9"/>
+        <rect x="12" y="88" width="150" height="58" rx="9"/>
+        <text class="lbl" x="87" y="112" text-anchor="middle">Decomposer</text>
+        <text class="stat" x="87" y="130" text-anchor="middle"></text>
+        <path class="tick" d="M148 97 l3 3 l6 -6" stroke="#067647" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <text class="meta" x="87" y="159" text-anchor="middle"></text>
+      </g>
+      <g class="gnode" data-id="retriever">
+        <rect class="halo" x="187" y="88" width="150" height="58" rx="9"/>
+        <rect x="187" y="88" width="150" height="58" rx="9"/>
+        <text class="lbl" x="262" y="112" text-anchor="middle">Retriever · RAG</text>
+        <text class="stat" x="262" y="130" text-anchor="middle"></text>
+        <path class="tick" d="M323 97 l3 3 l6 -6" stroke="#067647" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <text class="meta" x="262" y="159" text-anchor="middle"></text>
+      </g>
+      <g class="gnode pros" data-id="prosecutor">
+        <rect class="halo" x="362" y="22" width="150" height="58" rx="9"/>
+        <rect x="362" y="22" width="150" height="58" rx="9"/>
+        <text class="lbl" x="437" y="46" text-anchor="middle">Prosecutor</text>
+        <text class="stat" x="437" y="64" text-anchor="middle"></text>
+        <path class="tick" d="M498 31 l3 3 l6 -6" stroke="#b42318" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <text class="meta" x="437" y="95" text-anchor="middle"></text>
+      </g>
+      <g class="gnode def" data-id="defender">
+        <rect class="halo" x="362" y="154" width="150" height="58" rx="9"/>
+        <rect x="362" y="154" width="150" height="58" rx="9"/>
+        <text class="lbl" x="437" y="178" text-anchor="middle">Defender</text>
+        <text class="stat" x="437" y="196" text-anchor="middle"></text>
+        <path class="tick" d="M498 163 l3 3 l6 -6" stroke="#175cd3" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <text class="meta" x="437" y="227" text-anchor="middle"></text>
+      </g>
+      <g class="gnode" data-id="citation_verifier">
+        <rect class="halo" x="537" y="88" width="150" height="58" rx="9"/>
+        <rect x="537" y="88" width="150" height="58" rx="9"/>
+        <text class="lbl" x="612" y="112" text-anchor="middle">Citation check</text>
+        <text class="stat" x="612" y="130" text-anchor="middle"></text>
+        <path class="tick" d="M673 97 l3 3 l6 -6" stroke="#067647" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <text class="meta" x="612" y="159" text-anchor="middle"></text>
+      </g>
+      <g class="gnode" data-id="judge">
+        <rect class="halo" x="712" y="88" width="150" height="58" rx="9"/>
+        <rect x="712" y="88" width="150" height="58" rx="9"/>
+        <text class="lbl" x="787" y="112" text-anchor="middle">Judge</text>
+        <text class="stat" x="787" y="130" text-anchor="middle"></text>
+        <path class="tick" d="M848 97 l3 3 l6 -6" stroke="#067647" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <text class="meta" x="787" y="159" text-anchor="middle"></text>
+      </g>
+    </svg>
+    <div class="glegend">
+      <span><i style="background:#d8d8e0"></i>pending</span>
+      <span><i style="background:#16161a"></i>running</span>
+      <span><i style="background:#067647"></i>complete</span>
+      <span>prosecutor and defender run in parallel</span>
+    </div>
+  </div>
+
+  <main id="out"></main>
+
+  <div class="hist" id="histWrap" style="display:none">
+    <p class="eyebrow">Recent</p>
+    <div id="hist"></div>
+  </div>
+
+  <footer>
+    <span>LangGraph · RAG · MCP · deterministic citation checks</span>
+    <a href="https://github.com/udit-rawat/tribunal" target="_blank" rel="noopener">github.com/udit-rawat/tribunal</a>
+  </footer>
+</div>
+
+<script>
+const V = {
+  True:        {fg:'#067647', bg:'#ecfdf3', br:'#abefc6'},
+  False:       {fg:'#b42318', bg:'#fef3f2', br:'#fecdca'},
+  Misleading:  {fg:'#b54708', bg:'#fffaeb', br:'#fedf89'},
+  Unverifiable:{fg:'#475467', bg:'#f9fafb', br:'#eaecf0'},
+};
+const $ = s => document.querySelector(s);
+const el = (t,c,x) => { const n=document.createElement(t); if(c) n.className=c; if(x!=null) n.textContent=x; return n; };
+const host = () => $('#out');
+
+let es=null, order=[], tally={verified:0,dropped:0};
+
+/* ----- live graph -----
+   Mirrors the LangGraph DAG. A node only lights up once every upstream node it
+   depends on has finished, so the parallel fan-in is visible rather than implied. */
+const DEPS = {
+  decomposer:[], retriever:['decomposer'],
+  prosecutor:['retriever'], defender:['retriever'],
+  citation_verifier:['prosecutor','defender'], judge:['citation_verifier'],
+};
+const NEXT = {
+  decomposer:['retriever'], retriever:['prosecutor','defender'],
+  prosecutor:['citation_verifier'], defender:['citation_verifier'],
+  citation_verifier:['judge'], judge:[],
+};
+const finished = new Set();
+const gNode = id => document.querySelector(`.gnode[data-id="${id}"]`);
+const edgesTo = id => document.querySelectorAll(`.gedge[data-to="${id}"]`);
+const edgesFrom = id => document.querySelectorAll(`.gedge[data-from="${id}"]`);
+
+/* model · wall-clock · spend, kept deliberately quiet under each node */
+function shortModel(m){
+  return (m||'').replace(/:free$/,'').replace(/^.*\//,'').replace(/^gemini-/,'');
+}
+function metaLine(m){
+  if(!m) return '';
+  const bits = [];
+  if(m.model) bits.push(shortModel(m.model));
+  // For the parallel advocates, wall-clock between events is meaningless (the second one
+  // reports ~0s), so prefer the node's own model latency wherever there was a call.
+  const t = m.model ? m.latency_s : m.elapsed_s;
+  if(t != null) bits.push(t + 's');
+  if(m.cost_usd > 0) bits.push('$' + m.cost_usd.toFixed(4));
+  else if(m.tokens) bits.push(m.tokens + ' tok');
+  return bits.join('  ·  ');
+}
+
+function graphReset(){
+  finished.clear();
+  document.querySelectorAll('.gnode').forEach(n=>{
+    n.classList.remove('active','done');
+    n.querySelector('.stat').textContent='';
+    const mt = n.querySelector('.meta'); if(mt) mt.textContent='';
+  });
+  document.querySelectorAll('.gedge').forEach(e=>e.classList.remove('lit','flow'));
+  $('#graph').classList.add('on');
+  activate('decomposer');
+}
+function activate(id){
+  const n = gNode(id); if(!n || finished.has(id)) return;
+  n.classList.add('active');
+  edgesTo(id).forEach(e=>{ if(finished.has(e.dataset.from)) e.classList.add('flow'); });
+}
+function complete(id, stat, meta){
+  const n = gNode(id); if(!n) return;
+  finished.add(id);
+  n.classList.remove('active'); n.classList.add('done');
+  if(stat) n.querySelector('.stat').textContent = stat;
+  const mt = n.querySelector('.meta');
+  if(mt) mt.textContent = metaLine(meta);
+  edgesTo(id).forEach(e=>e.classList.remove('flow'));
+  edgesFrom(id).forEach(e=>e.classList.add('lit'));
+  // activate any successor whose dependencies are all satisfied
+  (NEXT[id]||[]).forEach(nx=>{
+    if(DEPS[nx].every(d=>finished.has(d))) activate(nx);
+  });
+}
+
+function block(eyebrow){
+  const s = el('section'); s.append(el('p','eyebrow', eyebrow)); host().append(s); return s;
+}
+
+/* ----- sub-claims ----- */
+function renderCharges(d){
+  if(!d.sub_claims?.length) return;
+  const s = block(`Sub-claims · ${d.sub_claims.length}`);
+  const card = el('div','card'); const ol = el('ol','subclaims');
+  d.sub_claims.forEach((sc,i)=>{
+    const li = el('li');
+    li.append(el('span','ix', String(i+1)));
+    const w = el('div');
+    w.append(document.createTextNode(sc.text));
+    if(sc.queries?.length) w.append(el('span','qs', sc.queries.join('   ·   ')));
+    li.append(w); ol.append(li);
+  });
+  card.append(ol); s.append(card);
+}
+
+/* ----- evidence ----- */
+function renderEvidence(d){
+  const s = block(`Retrieval · ${d.chunks} passages · ${(d.sources||[]).length} sources`);
+
+  // tool trace: every search / embedding call the RAG node made, in order
+  if(d.trace?.length){
+    const tr = el('div','trace');
+    d.trace.forEach(t=>{
+      const r = el('div','trow' + (t.ok===false?' bad':''));
+      r.append(el('span','tool', t.tool));
+      r.append(el('span','tq', t.query));
+      r.append(el('span','tn', t.note||''));
+      r.append(el('span','tr2', t.results + (t.tool==='embed+index'?' chunks':' docs')));
+      r.append(el('span','tt', t.latency_s + 's'));
+      tr.append(r);
+    });
+    s.append(tr);
+  }
+
+  const box = el('div','srcs');
+  (d.sources||[]).forEach(src=>{
+    const a = el('a', null, src.title || src.url.replace(/^https?:\/\//,''));
+    a.href = src.url; a.target='_blank'; a.rel='noopener'; a.title = src.url; box.append(a);
+  });
+  s.append(box);
+}
+
+/* ----- debate ----- */
+function ensureDebate(){
+  if($('#debate')) return;
+  const s = block('The debate');
+  const g = el('div','debate'); g.id='debate';
+  [['pros','Prosecution','Arguing the claim is false or unsupported'],
+   ['def','Defence','Arguing the claim is true and supported']].forEach(([k,t,sub])=>{
+    const c = el('div','col '+k); c.id='col-'+k;
+    const h = el('div','col-h');
+    h.append(el('span','bul'), el('span','ttl',t), el('span','ct','waiting'));
+    const sb = el('div','col-s', sub);
+    const b = el('div','args'); b.id='body-'+k;
+    for(let i=0;i<3;i++){ const sk=el('div','skel'); sk.style.width=(90-i*22)+'%'; b.append(sk); }
+    c.append(h,sb,b); g.append(c);
+  });
+  s.append(g);
+}
+function renderBrief(k,d){
+  ensureDebate();
+  const b = $('#body-'+k); b.innerHTML='';
+  const ct = $('#col-'+k+' .ct');
+  const n = d.arguments?.length || 0;
+  ct.textContent = n ? `${n} argument${n===1?'':'s'}` : 'no case';
+  if(!n){ b.append(el('p','none', d.summary || 'No supportable argument on this side.')); return; }
+  d.arguments.forEach((a,i)=>{
+    const w = el('div','arg'); w.style.animationDelay=(i*60)+'ms';
+    w.append(el('p','pt', a.point));
+    w.append(el('blockquote', null, '“'+a.quote+'”'));
+    if(a.source_url){
+      const link = el('a','src', a.source_url.replace(/^https?:\/\//,''));
+      link.href=a.source_url; link.target='_blank'; link.rel='noopener'; w.append(link);
+    }
+    b.append(w);
+  });
+}
+function renderVerification(d){
+  tally = {verified:d.verified||0, dropped:d.dropped||0};
+  renderBrief('pros', d.prosecution);
+  renderBrief('def',  d.defense);
+  if(!d.stricken?.length) return;
+  const s = block('Citation check');
+  const box = el('div','struck');
+  const h = el('div','struck-h');
+  h.append(el('span','badge','stricken'));
+  h.append(el('span','h', `${d.dropped} quote${d.dropped===1?'':'s'} rejected`));
+  box.append(h);
+  box.append(el('p','why','These quotes were not found verbatim in the retrieved evidence, so they were removed before the ruling. The check is a plain string match — it cannot be argued into accepting a fabrication.'));
+  d.stricken.forEach(x=>box.append(el('blockquote', null, '“'+x.quote+'”')));
+  s.append(box);
+}
+
+/* ----- verdict ----- */
+function renderVerdict(v){
+  const s = block('Ruling');
+  const c = V[v.verdict] || V.Unverifiable;
+  const card = el('div','vcard');
+  const top = el('div','vtop');
+  const pill = el('span','pill', v.verdict);
+  pill.style.color=c.fg; pill.style.background=c.bg; pill.style.borderColor=c.br;
+  pill.prepend(el('span','pd'));
+  top.append(pill, el('span','conf', Math.round(v.confidence*100)+'% confidence'));
+  const body = el('div','vbody');
+  body.append(el('p','vsum', v.summary));
+  body.append(el('p','vreason', v.reasoning));
+  const foot = el('div','vfoot');
+  foot.append(el('span', null, `${v.citations?.length||0} citations`));
+  foot.append(el('span', null, `${tally.verified} quotes verified`));
+  if(tally.dropped){ const w=el('span'); w.append(el('b',null,`${tally.dropped} stricken`)); foot.append(w); }
+  card.append(top, body, foot); s.append(card);
+  save(v);
+}
+
+/* ----- history ----- */
+function save(v){
+  const claim = $('#claim').value.trim();
+  const l = JSON.parse(localStorage.getItem('tribunal.hist')||'[]');
+  l.unshift({claim, verdict:v.verdict});
+  localStorage.setItem('tribunal.hist', JSON.stringify(l.slice(0,10)));
+  renderHist();
+}
+function renderHist(){
+  const l = JSON.parse(localStorage.getItem('tribunal.hist')||'[]');
+  if(!l.length) return;
+  $('#histWrap').style.display='block';
+  const h = $('#hist'); h.innerHTML='';
+  l.forEach(r=>{
+    const c = V[r.verdict]||V.Unverifiable;
+    const row = el('div','row');
+    const tg = el('span','tg', r.verdict);
+    tg.style.color=c.fg; tg.style.borderColor=c.br; tg.style.background=c.bg;
+    row.append(tg, el('span','tx', r.claim));
+    row.onclick = ()=>{ $('#claim').value=r.claim; run(); };
+    h.append(row);
+  });
+}
+
+/* live per-node readout shown inside each graph box */
+function statFor(node, d){
+  switch(node){
+    case 'decomposer': return `${d.sub_claims?.length||0} sub-claims`;
+    case 'retriever': {
+      const t = d.trace||[];
+      const searches = t.filter(x=>x.tool!=='embed+index').length;
+      return `${searches} searches · ${d.chunks||0} passages`;
+    }
+    case 'prosecutor':
+    case 'defender':   return `${d.arguments?.length||0} arguments`;
+    case 'citation_verifier': return d.dropped ? `${d.verified} kept · ${d.dropped} struck` : `${d.verified} verified`;
+    case 'judge':      return `${d.verdict} · ${Math.round((d.confidence||0)*100)}%`;
+    default: return '';
+  }
+}
+
+function fail(msg){
+  const s = block('Stopped');
+  const box = el('div','err');
+  box.append(el('p','h','Could not reach a verdict'));
+  box.append(el('p', null, msg));
+  s.append(box);
+}
+
+function run(){
+  const claim = $('#claim').value.trim(); if(!claim) return;
+  if(es) es.close();
+  host().innerHTML='';
+  $('#go').disabled=true; $('#go').textContent='Verifying…';
+
+  es = new EventSource('/api/stream?claim='+encodeURIComponent(claim));
+  es.addEventListener('start', ()=>graphReset());
+  es.addEventListener('stage', e=>{
+    const {node,data,meta} = JSON.parse(e.data);
+    ({decomposer:renderCharges, retriever:renderEvidence,
+      prosecutor:d=>renderBrief('pros',d), defender:d=>renderBrief('def',d),
+      citation_verifier:renderVerification, judge:renderVerdict}[node]||(()=>{}))(data);
+    complete(node, statFor(node, data), meta);
+  });
+  es.addEventListener('error', e=>{
+    let m='The connection to the server dropped.';
+    try{ m=JSON.parse(e.data).message; }catch(_){}
+    fail(m); stop();
+  });
+  es.addEventListener('done', e=>{
+    let t={}; try{ t=JSON.parse(e.data)||{}; }catch(_){}
+    const foot = document.querySelector('.vfoot');
+    if(foot && t.elapsed_s != null){
+      foot.append(el('span', null, `${t.elapsed_s}s total`));
+      if(t.tokens) foot.append(el('span', null, `${t.tokens.toLocaleString()} tokens`));
+      foot.append(el('span', null, t.cost_usd > 0 ? `$${t.cost_usd.toFixed(4)}` : 'free tier'));
+    }
+    if(foot && t.cached){
+      const c = el('span','cachetag','cached · 0 tokens'); foot.append(c);
+    }
+    stop();
+  });
+  es.onerror = ()=>{ if(es && es.readyState===2) stop(); };
+}
+function stop(){
+  if(es) es.close(); es=null;
+  $('#go').disabled=false; $('#go').textContent='Verify';
+  document.querySelectorAll('.gnode.active').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.gedge.flow').forEach(e=>e.classList.remove('flow'));
+}
+
+$('#f').addEventListener('submit', e=>{ e.preventDefault(); run(); });
+document.querySelectorAll('.chip').forEach(c=>
+  c.addEventListener('click', ()=>{ $('#claim').value=c.textContent; run(); }));
+renderHist();
+</script>
+</body>
+</html>
