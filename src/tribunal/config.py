@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     langfuse_host: str = "https://cloud.langfuse.com"
 
     request_timeout: int = 60
+    # Separate, shorter budget for evidence search — these run on the request path and a hung
+    # socket would otherwise stall the whole pipeline with no upper bound.
+    search_timeout: int = 15
 
     # Human-in-the-loop: pause before the Judge on low-confidence cases for a human to weigh in.
     hitl_enabled: bool = False

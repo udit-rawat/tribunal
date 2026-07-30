@@ -5,12 +5,46 @@ Every network call is wrapped so a single failing source never crashes a verific
 
 from __future__ import annotations
 
+import logging
+import queue
+import threading
+from typing import Any, Callable
+
 import httpx
 
 from ..config import settings
 
-_UA = {"User-Agent": "Tribunal/0.1 (fact-check portfolio project)"}
+# Wikimedia's robot policy (https://w.wiki/4wJS) rejects generic agents with 403 — the UA must
+# identify the tool and give a contact route, or every request silently returns no results.
+_UA = {"User-Agent": "Tribunal/0.1 (https://github.com/udit-rawat/tribunal)"}
 _WIKI_API = "https://en.wikipedia.org/w/api.php"
+
+log = logging.getLogger("tribunal.retrieval")
+
+
+def _with_deadline(fn: Callable[[], Any], timeout: float) -> Any:
+    """Run `fn` on a daemon thread and give up after `timeout` seconds.
+
+    Search clients expose no reliable timeout knob (`ddgs` takes opaque **kwargs), and a throttled
+    or blackholed endpoint otherwise blocks the request path forever. The worker is a daemon so an
+    abandoned socket can never hold up interpreter exit either.
+    """
+    box: queue.Queue = queue.Queue(maxsize=1)
+
+    def worker() -> None:
+        try:
+            box.put(("ok", fn()))
+        except BaseException as exc:  # noqa: BLE001 — re-raised on the caller's thread
+            box.put(("err", exc))
+
+    threading.Thread(target=worker, daemon=True).start()
+    try:
+        kind, value = box.get(timeout=timeout)
+    except queue.Empty:
+        raise TimeoutError(f"search exceeded {timeout}s budget") from None
+    if kind == "err":
+        raise value
+    return value
 
 
 def wikipedia_search(query: str, limit: int = 2) -> list[dict]:
@@ -18,18 +52,21 @@ def wikipedia_search(query: str, limit: int = 2) -> list[dict]:
     docs: list[dict] = []
     try:
         with httpx.Client(timeout=settings.request_timeout, headers=_UA) as c:
+            resp = c.get(
+                _WIKI_API,
+                params={
+                    "action": "query",
+                    "list": "search",
+                    "srsearch": query,
+                    "srlimit": limit,
+                    "format": "json",
+                },
+            )
+            # Surface hard failures (e.g. 403 from the robot policy) instead of degrading in
+            # silence — a dead primary source otherwise looks identical to "no results found".
+            resp.raise_for_status()
             hits = (
-                c.get(
-                    _WIKI_API,
-                    params={
-                        "action": "query",
-                        "list": "search",
-                        "srsearch": query,
-                        "srlimit": limit,
-                        "format": "json",
-                    },
-                )
-                .json()
+                resp.json()
                 .get("query", {})
                 .get("search", [])
             )
@@ -61,13 +98,17 @@ def wikipedia_search(query: str, limit: int = 2) -> list[dict]:
                                 "text": extract,
                             }
                         )
-    except Exception:
-        pass
+    except Exception as exc:
+        log.warning("wikipedia search failed for %r: %s", query, exc)
     return docs
 
 
 def ddg_search(query: str, limit: int = 4) -> list[dict]:
-    """Keyless DuckDuckGo web search. Returns snippet-level bodies."""
+    """Keyless DuckDuckGo web search. Returns snippet-level bodies.
+
+    The explicit timeout matters: without it a throttled or blackholed connection blocks the whole
+    pipeline indefinitely, since this runs on the request path.
+    """
     docs: list[dict] = []
     try:
         try:
@@ -75,19 +116,22 @@ def ddg_search(query: str, limit: int = 4) -> list[dict]:
         except ImportError:  # older package name
             from duckduckgo_search import DDGS
 
-        with DDGS() as d:
-            for r in d.text(query, max_results=limit):
-                body = r.get("body", "")
-                if body:
-                    docs.append(
-                        {
-                            "title": r.get("title", ""),
-                            "url": r.get("href", "") or r.get("url", ""),
-                            "text": body,
-                        }
-                    )
-    except Exception:
-        pass
+        def _fetch() -> list[dict]:
+            with DDGS() as d:
+                return list(d.text(query, max_results=limit))
+
+        for r in _with_deadline(_fetch, settings.search_timeout):
+            body = r.get("body", "")
+            if body:
+                docs.append(
+                    {
+                        "title": r.get("title", ""),
+                        "url": r.get("href", "") or r.get("url", ""),
+                        "text": body,
+                    }
+                )
+    except Exception as exc:
+        log.warning("duckduckgo search failed for %r: %s", query, exc)
     return docs
 
 
