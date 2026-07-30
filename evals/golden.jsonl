@@ -1,12 +1,32 @@
-{"claim": "The Great Wall of China is visible from space with the naked eye.", "expected": "False"}
 {"claim": "Water boils at 100 degrees Celsius at sea level.", "expected": "True"}
-{"claim": "Humans only use 10 percent of their brains.", "expected": "False"}
-{"claim": "The Eiffel Tower can grow taller in summer due to thermal expansion.", "expected": "True"}
-{"claim": "Goldfish have a memory span of only three seconds.", "expected": "False"}
-{"claim": "Mount Everest is the tallest mountain on Earth measured from base to peak.", "expected": "False", "note": "Base-to-peak, Mauna Kea is tallest; Everest is highest above sea level. Claim as worded is False."}
-{"claim": "Lightning never strikes the same place twice.", "expected": "False"}
+{"claim": "The Great Wall of China is visible from space with the naked eye.", "expected": "False"}
+{"claim": "Eating carrots improves your eyesight.", "expected": "Misleading", "note": "Vitamin A prevents deficiency-related night blindness; it does not improve normal vision."}
+{"claim": "There will be a crewed landing on Mars in exactly 2029.", "expected": "Unverifiable"}
 {"claim": "The human body has 206 bones in adulthood.", "expected": "True"}
-{"claim": "Bananas grow on trees.", "expected": "Misleading"}
-{"claim": "Napoleon Bonaparte was extremely short for his time.", "expected": "False"}
+{"claim": "Humans only use 10 percent of their brains.", "expected": "False"}
+{"claim": "Bananas are radioactive.", "expected": "Misleading", "note": "Literally true via potassium-40, but the dose is harmless."}
+{"claim": "Bitcoin will trade above 500,000 US dollars before 2030.", "expected": "Unverifiable"}
 {"claim": "Honey never spoils if stored properly.", "expected": "True"}
-{"claim": "There will be a manned mission to Mars in exactly 2029.", "expected": "Unverifiable"}
+{"claim": "Goldfish have a memory span of only three seconds.", "expected": "False"}
+{"claim": "Chameleons change color to blend in with their surroundings.", "expected": "Misleading", "note": "They do change color, but mainly for signalling and thermoregulation."}
+{"claim": "Intelligent extraterrestrial life exists somewhere in the universe.", "expected": "Unverifiable"}
+{"claim": "The Eiffel Tower can grow taller in summer due to thermal expansion.", "expected": "True"}
+{"claim": "Lightning never strikes the same place twice.", "expected": "False"}
+{"claim": "Sharks die if they stop swimming.", "expected": "Misleading", "note": "True only for obligate ram-ventilating species, not sharks generally."}
+{"claim": "Chocolate is the most delicious flavour of ice cream.", "expected": "Unverifiable", "note": "Subjective preference, not a factual claim."}
+{"claim": "Light takes about eight minutes to travel from the Sun to the Earth.", "expected": "True"}
+{"claim": "Napoleon Bonaparte was extremely short for his time.", "expected": "False"}
+{"claim": "Humans have five senses.", "expected": "Misleading", "note": "The classic five omit balance, proprioception, thermoception and others."}
+{"claim": "The number of ants alive on Earth right now is exactly 20 quadrillion.", "expected": "Unverifiable", "note": "Estimates exist; an exact live count is unknowable."}
+{"claim": "Antibiotics are ineffective against viral infections.", "expected": "True"}
+{"claim": "Mount Everest is the tallest mountain on Earth measured from base to peak.", "expected": "False", "note": "Base-to-peak Mauna Kea is taller; Everest is highest above sea level."}
+{"claim": "My next-door neighbour owns exactly three cats.", "expected": "Unverifiable", "note": "Private fact with no public evidence."}
+{"claim": "Octopuses have three hearts.", "expected": "True"}
+{"claim": "Diamonds are formed from compressed coal.", "expected": "False"}
+{"claim": "Sound travels faster through water than through air.", "expected": "True"}
+{"claim": "Sugar consumption causes hyperactivity in children.", "expected": "False"}
+{"claim": "Mount Kilimanjaro is the highest mountain in Africa.", "expected": "True"}
+{"claim": "Humans lose most of their body heat through their head.", "expected": "False"}
+{"claim": "Different regions of the tongue detect different basic tastes.", "expected": "False", "note": "The 'tongue map' is a debunked misreading of a 1901 paper."}
+{"claim": "Bats are blind.", "expected": "False"}
+{"claim": "Glass is a liquid that flows slowly over centuries.", "expected": "False"}
