@@ -8,10 +8,13 @@ from __future__ import annotations
 import logging
 import queue
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable
 
 import httpx
 
+from .. import cache, telemetry
 from ..config import settings
 
 # Wikimedia's robot policy (https://w.wiki/4wJS) rejects generic agents with 403 — the UA must
@@ -50,6 +53,8 @@ def _with_deadline(fn: Callable[[], Any], timeout: float) -> Any:
 def wikipedia_search(query: str, limit: int = 2) -> list[dict]:
     """Search Wikipedia, return plain-text extracts for the top hits."""
     docs: list[dict] = []
+    started = time.monotonic()
+    err = ""
     try:
         with httpx.Client(timeout=settings.request_timeout, headers=_UA) as c:
             resp = c.get(
@@ -99,7 +104,18 @@ def wikipedia_search(query: str, limit: int = 2) -> list[dict]:
                             }
                         )
     except Exception as exc:
+        err = f"{type(exc).__name__}: {str(exc)[:80]}"
         log.warning("wikipedia search failed for %r: %s", query, exc)
+    telemetry.record_tool(
+        telemetry.ToolCall(
+            tool="wikipedia",
+            query=query,
+            results=len(docs),
+            latency_s=time.monotonic() - started,
+            ok=not err,
+            note=err or (f"{sum(len(d['text']) for d in docs):,} chars" if docs else "no hits"),
+        )
+    )
     return docs
 
 
@@ -110,6 +126,8 @@ def ddg_search(query: str, limit: int = 4) -> list[dict]:
     pipeline indefinitely, since this runs on the request path.
     """
     docs: list[dict] = []
+    started = time.monotonic()
+    err = ""
     try:
         try:
             from ddgs import DDGS
@@ -131,21 +149,60 @@ def ddg_search(query: str, limit: int = 4) -> list[dict]:
                     }
                 )
     except Exception as exc:
+        err = f"{type(exc).__name__}: {str(exc)[:80]}"
         log.warning("duckduckgo search failed for %r: %s", query, exc)
+    telemetry.record_tool(
+        telemetry.ToolCall(
+            tool="duckduckgo",
+            query=query,
+            results=len(docs),
+            latency_s=time.monotonic() - started,
+            ok=not err,
+            note=err or ("snippets" if docs else "no hits"),
+        )
+    )
     return docs
 
 
+def _gather_one(query: str) -> list[dict]:
+    """Wikipedia-first hybrid gather for a single query, with a cache hop in front."""
+    cached = cache.get("search", query)
+    if cached is not None:
+        telemetry.record_tool(
+            telemetry.ToolCall(
+                tool="cache", query=query, results=len(cached), latency_s=0.0, note="search hit"
+            )
+        )
+        return cached
+
+    results = wikipedia_search(query, limit=2)
+    if results:
+        results += ddg_search(query, limit=2)  # augment with a couple of web hits
+    else:
+        results = ddg_search(query, limit=settings.max_sources_per_query)  # fall back fully
+    if results:
+        cache.put("search", query, results)
+    return results
+
+
 def gather_sources(queries: list[str]) -> list[dict]:
-    """Wikipedia-first hybrid gather across all queries, de-duplicated by URL."""
+    """Hybrid gather across all queries, de-duplicated by URL.
+
+    Queries are independent network calls, so they run concurrently — sequentially they were the
+    single slowest part of the pipeline. `ThreadPoolExecutor.map` preserves input order, so the
+    resulting evidence list stays deterministic for a given set of queries.
+    """
+    if not queries:
+        return []
+
+    workers = max(1, min(settings.search_concurrency, len(queries)))
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="search") as pool:
+        batches = list(pool.map(_gather_one, queries))
+
     docs: list[dict] = []
     seen: set[str] = set()
-    for q in queries:
-        results = wikipedia_search(q, limit=2)
-        if results:
-            results += ddg_search(q, limit=2)  # augment with a couple web hits
-        else:
-            results = ddg_search(q, limit=settings.max_sources_per_query)  # fall back fully
-        for d in results:
+    for batch in batches:
+        for d in batch:
             url = d.get("url", "")
             if url and url not in seen and d.get("text"):
                 seen.add(url)
