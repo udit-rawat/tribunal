@@ -14,6 +14,7 @@ import instructor
 from openai import OpenAI, RateLimitError
 from pydantic import BaseModel
 
+from . import telemetry
 from .config import settings
 
 T = TypeVar("T", bound=BaseModel)
@@ -50,6 +51,7 @@ def structured(
     user: str,
     temperature: float = 0.2,
     max_retries: int = 3,
+    node: str = "",
 ) -> T:
     """Structured call with backoff + model fallback.
 
@@ -61,8 +63,9 @@ def structured(
 
     for model_name in _model_chain(model):
         for attempt in range(max_retries):
+            started = time.monotonic()
             try:
-                return client.chat.completions.create(
+                result, completion = client.chat.completions.create_with_completion(
                     model=model_name,
                     response_model=response_model,
                     max_retries=1,  # instructor's own validation retry
@@ -72,6 +75,17 @@ def structured(
                         {"role": "user", "content": user},
                     ],
                 )
+                usage = getattr(completion, "usage", None)
+                telemetry.record(
+                    telemetry.Call(
+                        model=model_name,  # the model that actually served it, post-fallback
+                        latency_s=time.monotonic() - started,
+                        prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+                        completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+                        node=node,
+                    )
+                )
+                return result
             except RateLimitError as e:
                 last_err = e
                 if "PerDay" in str(e) or "per day" in str(e).lower():
