@@ -6,6 +6,8 @@ citations against retrieved sources programmatically, and having a third agent r
 You give it a claim. It returns a verdict — `True`, `False`, `Misleading`, or `Unverifiable` — with a
 confidence score and quotes traced back to the sources they came from.
 
+**Runs on your own API key** — see [Setup](#setup). There is no hosted demo and no bundled key.
+
 ```
 $ tribunal "The Great Wall of China is visible from space with the naked eye"
 
@@ -58,27 +60,50 @@ both. See [docs/WORKFLOW.md](docs/WORKFLOW.md) for a stage-by-stage walkthrough 
 
 ## Setup
 
+> **Bring your own key.** No API key ships with this repo and there is no hosted instance. Tribunal
+> makes four LLM calls per claim against *your* account, so you must supply your own credentials in
+> `.env` before anything will run. Without a key every verification fails immediately with a
+> "provider rejected the API key" message.
+
 ```bash
 uv venv && source .venv/bin/activate
 uv pip install -e .          # add '.[dev]' for pytest
-cp .env.example .env         # then fill in LLM_API_KEY
+cp .env.example .env         # then fill in LLM_API_KEY — this step is not optional
 ```
 
-Tribunal talks to any OpenAI-compatible endpoint. Both of these work:
+Tribunal talks to any OpenAI-compatible endpoint, so use whichever provider you already have. Both
+of these are verified working:
 
 ```bash
-# OpenRouter
-LLM_BASE_URL=https://openrouter.ai/api/v1
-STRONG_MODEL=nvidia/nemotron-3-super-120b-a12b:free
-FAST_MODEL=openai/gpt-oss-20b:free
-
-# Google AI Studio
+# Google AI Studio — free key at https://aistudio.google.com/apikey
+LLM_API_KEY=<your key>
 LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 STRONG_MODEL=gemini-2.5-flash
 FAST_MODEL=gemini-2.5-flash-lite
+
+# OpenRouter — free key at https://openrouter.ai/keys
+LLM_API_KEY=<your key>
+LLM_BASE_URL=https://openrouter.ai/api/v1
+STRONG_MODEL=nvidia/nemotron-3-super-120b-a12b:free
+FAST_MODEL=openai/gpt-oss-20b:free
 ```
 
+### What it costs you
+
+Free tiers are metered per day, and a claim costs four calls, so the daily cap is the practical
+limit rather than money:
+
+| Provider | Free allowance | Claims per day |
+|---|---|---|
+| Google AI Studio | ~20 requests/day per model | ~10 |
+| OpenRouter (free) | 50 requests/day | ~12 |
+| OpenRouter (after a one-off $10 top-up) | 1000 requests/day | ~250 |
+
+Verdicts and searches are cached, so re-running a claim you have already checked costs nothing and
+returns instantly — worth knowing when demoing or re-running the eval across several days.
+
 Embeddings run locally via ONNX, so no embedding API key is needed and no PyTorch is installed.
+Langfuse tracing is optional and stays off unless you add those keys too.
 
 ## Usage
 
