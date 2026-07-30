@@ -1,5 +1,6 @@
 .venv/
 .lancedb/
+.tribunal-cache.db
 .env
 __pycache__/
 *.egg-info/

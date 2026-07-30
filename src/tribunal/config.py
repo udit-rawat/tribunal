@@ -36,6 +36,15 @@ class Settings(BaseSettings):
     # socket would otherwise stall the whole pipeline with no upper bound.
     search_timeout: int = 15
 
+    # Cache: searches for speed, verdicts for quota. TTL of 0 disables expiry.
+    cache_enabled: bool = True
+    cache_path: str = ".tribunal-cache.db"
+    cache_ttl_hours: int = 168  # a week — long enough to demo, short enough to catch stale facts
+
+    # How many evidence searches to run at once. They are independent network calls, so running
+    # them sequentially made retrieval the slowest part of the pipeline.
+    search_concurrency: int = 6
+
     # Human-in-the-loop: pause before the Judge on low-confidence cases for a human to weigh in.
     hitl_enabled: bool = False
     hitl_min_evidence: int = 2  # fewer retrieved chunks than this = "uncertain", trigger review
