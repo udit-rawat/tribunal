@@ -22,5 +22,6 @@ class TribunalState(TypedDict, total=False):
     verified_prosecution: Brief
     verified_defense: Brief
     dropped_citations: int
+    verified_citations: int
     human_note: str  # optional guidance injected by a human reviewer (HITL)
     result: VerdictResult

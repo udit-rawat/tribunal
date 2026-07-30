@@ -121,7 +121,12 @@ def citation_verifier(state: TribunalState) -> dict:
 
     vp, dp = verify(state.get("prosecution", Brief()))
     vd, dd = verify(state.get("defense", Brief()))
-    return {"verified_prosecution": vp, "verified_defense": vd, "dropped_citations": dp + dd}
+    return {
+        "verified_prosecution": vp,
+        "verified_defense": vd,
+        "dropped_citations": dp + dd,
+        "verified_citations": len(vp.arguments) + len(vd.arguments),
+    }
 
 
 # --------------------------------------------------------------------------- #

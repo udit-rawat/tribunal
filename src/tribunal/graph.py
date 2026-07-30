@@ -54,15 +54,37 @@ def build_graph():
     return g.compile(checkpointer=MemorySaver())
 
 
+def _run(claim: str) -> dict:
+    """Invoke the graph once and return the raw final state."""
+    graph = build_graph()
+    config = {"configurable": {"thread_id": uuid.uuid4().hex}, "callbacks": get_callbacks()}
+    return graph.invoke({"claim": claim}, config=config)
+
+
 def verify_claim(claim: str) -> dict:
     """Run the full pipeline and return the verdict as a plain dict.
 
     HITL is off by default here, so this never pauses. Interactive review lives in the CLI.
     """
-    graph = build_graph()
-    config = {"configurable": {"thread_id": uuid.uuid4().hex}, "callbacks": get_callbacks()}
-    final = graph.invoke({"claim": claim}, config=config)
+    final = _run(claim)
     # mode="json" serializes the Verdict enum to its string value ("False", not "Verdict.FALSE")
     result = final["result"].model_dump(mode="json")
     result["dropped_citations"] = final.get("dropped_citations", 0)
+    result["verified_citations"] = final.get("verified_citations", 0)
     return result
+
+
+def verify_claim_detailed(claim: str) -> dict:
+    """Same as `verify_claim` but also returns the retrieved contexts.
+
+    Used by the RAGAS eval, which needs the evidence that grounded the verdict in order to score
+    faithfulness (is the answer supported by the retrieved context?).
+    """
+    final = _run(claim)
+    result = final["result"]
+    return {
+        "verdict": result.model_dump(mode="json"),
+        "contexts": [e.text for e in final.get("evidence", [])],
+        "answer": f"{result.verdict.value}. {result.summary} {result.reasoning}".strip(),
+        "dropped_citations": final.get("dropped_citations", 0),
+    }
