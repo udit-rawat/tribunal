@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 430" width="1120" height="430" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <rect width="1120" height="430" fill="#ffffff"/>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <style>
+    .box   { fill:#f8fafc; stroke:#cbd5e1; stroke-width:1.5; rx:8; }
+    .agent { fill:#eef2ff; stroke:#818cf8; stroke-width:1.5; rx:8; }
+    .rag   { fill:#ecfdf5; stroke:#34d399; stroke-width:1.5; rx:8; }
+    .guard { fill:#fff7ed; stroke:#fb923c; stroke-width:1.5; rx:8; }
+    .hitl  { fill:#fefce8; stroke:#facc15; stroke-width:1.5; rx:8; stroke-dasharray:5 3; }
+    .t     { font-size:14px; fill:#0f172a; font-weight:600; text-anchor:middle; }
+    .s     { font-size:11px; fill:#64748b; text-anchor:middle; }
+    .lbl   { font-size:11px; fill:#94a3b8; text-anchor:middle; font-style:italic; }
+    .title { font-size:16px; fill:#0f172a; font-weight:700; }
+    .edge  { stroke:#64748b; stroke-width:1.6; fill:none; marker-end:url(#arrow); }
+    .note  { font-size:11px; fill:#475569; text-anchor:middle; }
+    .dash  { fill:none; stroke:#cbd5e1; stroke-width:1.2; stroke-dasharray:4 4; rx:8; }
+  </style>
+
+  <text x="40" y="38" class="title">Tribunal — verification pipeline</text>
+  <text x="40" y="58" font-size="12" fill="#64748b">LangGraph state machine. Prosecutor and Defender fan out in parallel, then fan back in.</text>
+
+  <!-- claim -->
+  <rect class="box" x="28" y="150" width="96" height="54"/>
+  <text class="t" x="76" y="173">Claim</text>
+  <text class="s" x="76" y="190">input</text>
+
+  <!-- decomposer -->
+  <rect class="agent" x="160" y="150" width="130" height="54"/>
+  <text class="t" x="225" y="173">Decomposer</text>
+  <text class="s" x="225" y="190">sub-claims + queries</text>
+
+  <!-- retriever -->
+  <rect class="rag" x="326" y="150" width="130" height="54"/>
+  <text class="t" x="391" y="173">Retriever</text>
+  <text class="s" x="391" y="190">RAG node</text>
+
+  <!-- rag detail -->
+  <rect class="dash" x="278" y="252" width="226" height="86"/>
+  <text class="note" x="391" y="274">Wikipedia → DuckDuckGo fallback</text>
+  <text class="note" x="391" y="292">chunk (220w / 40 overlap)</text>
+  <text class="note" x="391" y="310">MiniLM ONNX embed → LanceDB</text>
+  <text class="note" x="391" y="328">top-k per sub-claim</text>
+  <path class="edge" d="M 391 206 L 391 248"/>
+
+  <!-- prosecutor -->
+  <rect class="agent" x="500" y="88" width="130" height="54"/>
+  <text class="t" x="565" y="111">Prosecutor</text>
+  <text class="s" x="565" y="128">argues FALSE</text>
+
+  <!-- defender -->
+  <rect class="agent" x="500" y="212" width="130" height="54"/>
+  <text class="t" x="565" y="235">Defender</text>
+  <text class="s" x="565" y="252">argues TRUE</text>
+
+  <text class="lbl" x="565" y="176">parallel branches</text>
+
+  <!-- citation verifier -->
+  <rect class="guard" x="672" y="150" width="140" height="54"/>
+  <text class="t" x="742" y="170">Citation Verifier</text>
+  <text class="s" x="742" y="186">deterministic guardrail</text>
+  <text class="s" x="742" y="199">drops unquoted claims</text>
+
+  <!-- review gate -->
+  <rect class="hitl" x="850" y="150" width="120" height="54"/>
+  <text class="t" x="910" y="173">Review Gate</text>
+  <text class="s" x="910" y="190">HITL (optional)</text>
+
+  <!-- judge -->
+  <rect class="agent" x="1006" y="88" width="92" height="54"/>
+  <text class="t" x="1052" y="111">Judge</text>
+  <text class="s" x="1052" y="128">rules</text>
+
+  <!-- verdict -->
+  <rect class="box" x="1006" y="212" width="92" height="54"/>
+  <text class="t" x="1052" y="232">Verdict</text>
+  <text class="s" x="1052" y="248">+ confidence</text>
+  <text class="s" x="1052" y="261">+ citations</text>
+
+  <!-- edges -->
+  <path class="edge" d="M 124 177 L 156 177"/>
+  <path class="edge" d="M 290 177 L 322 177"/>
+  <path class="edge" d="M 456 170 C 480 170, 476 115, 496 115"/>
+  <path class="edge" d="M 456 184 C 480 184, 476 239, 496 239"/>
+  <path class="edge" d="M 630 115 C 654 115, 650 170, 668 170"/>
+  <path class="edge" d="M 630 239 C 654 239, 650 184, 668 184"/>
+  <path class="edge" d="M 812 177 L 846 177"/>
+  <path class="edge" d="M 970 170 C 992 170, 988 115, 1002 115"/>
+  <path class="edge" d="M 1052 142 L 1052 208"/>
+
+  <!-- legend -->
+  <rect x="28" y="372" width="14" height="14" rx="3" fill="#eef2ff" stroke="#818cf8"/>
+  <text x="50" y="384" font-size="12" fill="#475569">LLM agent</text>
+  <rect x="140" y="372" width="14" height="14" rx="3" fill="#ecfdf5" stroke="#34d399"/>
+  <text x="162" y="384" font-size="12" fill="#475569">RAG</text>
+  <rect x="216" y="372" width="14" height="14" rx="3" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="238" y="384" font-size="12" fill="#475569">deterministic guardrail (no LLM)</text>
+  <rect x="450" y="372" width="14" height="14" rx="3" fill="#fefce8" stroke="#facc15" stroke-dasharray="3 2"/>
+  <text x="472" y="384" font-size="12" fill="#475569">human-in-the-loop (opt-in)</text>
+</svg>
