@@ -51,6 +51,23 @@ def test_citation_verifier_drops_hallucinations():
     assert out["dropped_citations"] == 1
 
 
+def test_search_deadline_abandons_hang():
+    """A hung search must not block the request path (regression: 90-min pipeline stall)."""
+    import time
+
+    from tribunal.retrieval.sources import _with_deadline
+
+    start = time.time()
+    try:
+        _with_deadline(lambda: time.sleep(30), 1)
+        raise AssertionError("expected TimeoutError")
+    except TimeoutError:
+        pass
+    assert time.time() - start < 5
+
+    assert _with_deadline(lambda: "ok", 5) == "ok"
+
+
 def test_review_gate_uncertainty_trigger():
     """HITL gate fires on thin evidence, stays quiet when evidence is solid."""
     from tribunal.agents import _is_uncertain
