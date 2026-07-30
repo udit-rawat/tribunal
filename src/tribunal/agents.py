@@ -9,7 +9,7 @@ import re
 
 from .config import AGENT_MODELS, settings
 from .llm import structured
-from .schemas import Brief, Decomposition, EvidenceChunk, VerdictResult
+from .schemas import ArgumentPoint, Brief, Decomposition, EvidenceChunk, VerdictResult
 from .retrieval.sources import gather_sources
 from .retrieval.store import build_index, retrieve
 from .state import TribunalState
@@ -32,6 +32,7 @@ def decomposer(state: TribunalState) -> dict:
     result = structured(
         model=AGENT_MODELS["decomposer"],
         response_model=Decomposition,
+        node="decomposer",
         system=(
             "You break a factual claim into atomic, independently checkable sub-claims. "
             "For each, write 1-3 neutral search queries that would surface evidence either way. "
@@ -73,6 +74,7 @@ def _make_brief(state: TribunalState, agent_key: str, stance: str) -> Brief:
     return structured(
         model=AGENT_MODELS[agent_key],
         response_model=Brief,
+        node="prosecutor" if stance == "Prosecutor" else "defender",
         system=(
             f"You are the {stance}. Build the strongest possible case that the claim is "
             f"{'FALSE or unsupported' if stance == 'Prosecutor' else 'TRUE and well-supported'}. "
@@ -114,17 +116,21 @@ def citation_verifier(state: TribunalState) -> dict:
     """Drop any argument whose quote is NOT found verbatim in the retrieved evidence."""
     evidence_norm = [_normalize(e.text) for e in state.get("evidence", [])]
 
-    def verify(brief: Brief) -> tuple[Brief, int]:
-        kept = [p for p in brief.arguments if _quote_supported(p.quote, evidence_norm)]
-        dropped = len(brief.arguments) - len(kept)
-        return Brief(arguments=kept, summary=brief.summary), dropped
+    def verify(brief: Brief) -> tuple[Brief, list[ArgumentPoint]]:
+        kept, stricken = [], []
+        for p in brief.arguments:
+            (kept if _quote_supported(p.quote, evidence_norm) else stricken).append(p)
+        return Brief(arguments=kept, summary=brief.summary), stricken
 
-    vp, dp = verify(state.get("prosecution", Brief()))
-    vd, dd = verify(state.get("defense", Brief()))
+    vp, sp = verify(state.get("prosecution", Brief()))
+    vd, sd = verify(state.get("defense", Brief()))
     return {
         "verified_prosecution": vp,
         "verified_defense": vd,
-        "dropped_citations": dp + dd,
+        # Retained rather than discarded: an unsupported quote is evidence about the model's
+        # behaviour, and the UI surfaces it as struck from the record.
+        "stricken": sp + sd,
+        "dropped_citations": len(sp) + len(sd),
         "verified_citations": len(vp.arguments) + len(vd.arguments),
     }
 
@@ -190,6 +196,7 @@ def judge(state: TribunalState) -> dict:
     result = structured(
         model=AGENT_MODELS["judge"],
         response_model=VerdictResult,
+        node="judge",
         system=(
             "You are the Judge. You are given a claim and two briefs whose quotes have already been "
             "verified against the source evidence. Rule with one verdict: True, False, Misleading, "

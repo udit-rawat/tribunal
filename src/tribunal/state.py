@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TypedDict
 
-from .schemas import Brief, EvidenceChunk, SubClaim, VerdictResult
+from .schemas import ArgumentPoint, Brief, EvidenceChunk, SubClaim, VerdictResult
 
 
 class TribunalState(TypedDict, total=False):
@@ -21,6 +21,7 @@ class TribunalState(TypedDict, total=False):
     # after the Citation Verifier drops any quote not found in the evidence
     verified_prosecution: Brief
     verified_defense: Brief
+    stricken: list[ArgumentPoint]  # quotes rejected as unsupported by the evidence
     dropped_citations: int
     verified_citations: int
     human_note: str  # optional guidance injected by a human reviewer (HITL)
