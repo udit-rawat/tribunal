@@ -110,12 +110,28 @@ MCP client config:
 ## Evaluation
 
 ```bash
-python evals/run_evals.py
+python evals/run_evals.py                  # full golden set
+python evals/run_evals.py --limit 12       # balanced subset, quota-friendly
+python evals/run_evals.py --sleep 4        # pace requests around rate limits
+python evals/run_ragas.py --limit 5        # faithfulness / relevancy (needs '.[evals]')
 ```
 
-Runs every claim in `evals/golden.jsonl` and reports verdict accuracy against the expected label.
-Claims that error (rate limits, timeouts) are reported as failures rather than silently skipped, so
-the number never flatters itself.
+`evals/golden.jsonl` holds 32 hand-labelled claims spanning all four verdicts, ordered so that any
+prefix stays label-balanced — a truncated run is still representative. Three metrics come out:
+
+- **Strict accuracy** — exact label match.
+- **Polarity accuracy** — collapses labels into supported / contested / unknown. `False` and
+  `Misleading` both mean "don't trust this as stated" and the line between them is genuinely
+  subjective, so this measures whether the direction was right independent of that judgment call.
+- **Quote grounding** — share of advocate quotes found verbatim in the retrieved evidence. This one
+  is deterministic rather than LLM-judged, which makes it the honest hallucination rate.
+
+API errors are counted and excluded from accuracy rather than scored as wrong answers: a rate limit
+is not a reasoning failure, and folding the two together corrupts the metric in both directions.
+
+`run_ragas.py` adds LLM-judged faithfulness and response relevancy — it asks whether the verdict was
+*earned* by the retrieved evidence, since a system can reach the right label from irrelevant context
+and still be broken.
 
 ## Observability
 
