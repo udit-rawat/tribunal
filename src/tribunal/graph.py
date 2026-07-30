@@ -15,6 +15,7 @@ from functools import lru_cache
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
+from . import cache
 from .agents import (
     citation_verifier,
     decomposer,
@@ -61,16 +62,25 @@ def _run(claim: str) -> dict:
     return graph.invoke({"claim": claim}, config=config)
 
 
-def verify_claim(claim: str) -> dict:
+def verify_claim(claim: str, use_cache: bool = True) -> dict:
     """Run the full pipeline and return the verdict as a plain dict.
 
     HITL is off by default here, so this never pauses. Interactive review lives in the CLI.
+    A cached verdict costs no tokens, which matters because daily quota — not money — is the
+    limiting resource on free tiers.
     """
+    if use_cache:
+        hit = cache.get("verdict", claim)
+        if hit is not None:
+            return {**hit, "cached": True}
+
     final = _run(claim)
     # mode="json" serializes the Verdict enum to its string value ("False", not "Verdict.FALSE")
     result = final["result"].model_dump(mode="json")
     result["dropped_citations"] = final.get("dropped_citations", 0)
     result["verified_citations"] = final.get("verified_citations", 0)
+    if use_cache:
+        cache.put("verdict", claim, result)
     return result
 
 
