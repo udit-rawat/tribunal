@@ -45,7 +45,8 @@ def _print_card(r: dict, claim: str) -> None:
     verdict = r["verdict"]
     print()
     print(f"  CLAIM: {claim}")
-    print(f"  {_ICON.get(verdict, '•')} VERDICT: {verdict}  (confidence {r['confidence']:.0%})")
+    cached = "  [cached]" if r.get("cached") else ""
+    print(f"  {_ICON.get(verdict, '•')} VERDICT: {verdict}  (confidence {r['confidence']:.0%}){cached}")
     print(f"  {r['summary']}")
     print()
     print(f"  Reasoning: {r['reasoning']}")
@@ -63,17 +64,30 @@ def _print_card(r: dict, claim: str) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(prog="tribunal", description="Fact-check a factual claim.")
-    p.add_argument("claim", nargs="+", help="the claim to verify")
+    p.add_argument("claim", nargs="*", help="the claim to verify")
     p.add_argument("--json", action="store_true", help="print raw JSON instead of a card")
     p.add_argument(
         "--review",
         action="store_true",
         help="human-in-the-loop: pause for your input on low-confidence cases",
     )
+    p.add_argument("--no-cache", action="store_true", help="ignore cached verdicts and searches")
+    p.add_argument("--clear-cache", action="store_true", help="empty the cache and exit")
     args = p.parse_args()
 
+    if args.clear_cache:
+        from .cache import clear
+
+        print(f"cleared {clear()} cache entries")
+        return
+
+    if not args.claim:
+        p.error("a claim is required")
+
     claim = " ".join(args.claim)
-    result = _run_with_review(claim) if args.review else verify_claim(claim)
+    result = (
+        _run_with_review(claim) if args.review else verify_claim(claim, use_cache=not args.no_cache)
+    )
     if args.json:
         print(json.dumps(result, indent=2))
     else:
