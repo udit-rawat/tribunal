@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import time
 import uuid
 
 import lancedb
 
+from .. import telemetry
 from ..config import settings
 from ..embeddings import embed, embed_one
 from ..schemas import EvidenceChunk
@@ -21,13 +23,24 @@ def build_index(docs: list[dict]):
     if not rows:
         return None
 
+    started = time.monotonic()
     vectors = embed([r["text"] for r in rows])
     for r, v in zip(rows, vectors):
         r["vector"] = v
 
     db = lancedb.connect(settings.lancedb_path)
     name = f"claim_{uuid.uuid4().hex[:8]}"
-    return db.create_table(name, data=rows, mode="overwrite")
+    table = db.create_table(name, data=rows, mode="overwrite")
+    telemetry.record_tool(
+        telemetry.ToolCall(
+            tool="embed+index",
+            query=f"{len(docs)} docs → {len(rows)} chunks",
+            results=len(rows),
+            latency_s=time.monotonic() - started,
+            note=f"{settings.embed_model.split('/')[-1]} · {len(vectors[0])}d · LanceDB",
+        )
+    )
+    return table
 
 
 def retrieve(table, query: str, k: int) -> list[EvidenceChunk]:
