@@ -32,18 +32,31 @@ the sources instead of hiding it.
 
 ## Results
 
-On a 12-claim golden set of common factual claims and myths:
+On a 32-claim hand-labelled golden set balanced across all four verdicts (29 scored; 3 excluded as
+API errors rather than counted as wrong answers):
 
 | Metric | Value |
 |---|---|
-| Verdict accuracy | 10/12 (83%) |
-| Typical latency | ~40s per claim |
+| Strict accuracy | 19/29 (66%) |
+| Polarity accuracy | 24/29 (83%) |
+| Quote grounding | 193/202 (96%) verified verbatim |
+| Typical latency | ~15s per claim |
 | Cost | $0 (free-tier models) |
 
-Of the two misses, one is a rate-limit error rather than a wrong answer, and the other is a
-`Misleading` vs `False` disagreement on a claim where the label is arguable (*"Bananas grow on
-trees"* — botanically the banana plant is a herb, so the model's `False` is defensible). The set is
-small and hand-labeled; treat 83% as a smoke signal, not a benchmark.
+Per label: `False` 9/10 · `True` 6/8 · `Unverifiable` 3/6 · **`Misleading` 1/5**.
+
+**The failure is more interesting than the score.** The system is dependable on the binary call —
+it catches myths at 90% — but the largest single error class is `Misleading` → `False` (4 of 10
+errors). Asked about *"eating carrots improves your eyesight"* or *"sharks die if they stop
+swimming"*, it flattens "literally true but creates a false impression" into a plain "false". That
+is a specific, addressable weakness in the Judge prompt, and surfacing it is what the eval is for.
+
+**Quote grounding is the number to trust most.** At 96% it is measured by string comparison rather
+than model judgement, and the 9 failures are quotes the Citation Verifier struck before the Judge
+ever saw them.
+
+An earlier 12-claim run scored 83%, but that set skewed toward easy True/False myths. The figures
+above come from the harder, balanced set and supersede it.
 
 ## Architecture
 
