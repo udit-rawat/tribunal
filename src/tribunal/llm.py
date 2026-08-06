@@ -58,6 +58,13 @@ def structured(
     - Per-minute rate limits: exponential backoff, retry same model.
     - Per-day quota exhaustion: skip straight to the fallback model (separate quota).
     """
+    if settings.llm_provider == "anthropic":
+        from . import llm_anthropic
+
+        return llm_anthropic.structured(
+            model=model, response_model=response_model, system=system, user=user, node=node
+        )
+
     client = get_client()
     last_err: Exception | None = None
 

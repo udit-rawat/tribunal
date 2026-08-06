@@ -8,9 +8,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # LLM provider (OpenAI-compatible endpoint: OpenRouter, Google AI Studio, etc.)
+    # LLM provider: "openai" for any OpenAI-compatible endpoint (OpenRouter, Google AI Studio),
+    # or "anthropic" for the first-party Claude API via the official SDK.
+    llm_provider: str = "openai"
     llm_api_key: str = ""
     llm_base_url: str = "https://openrouter.ai/api/v1"
+
+    # Anthropic-only knobs. `effort` controls reasoning depth and spend (low|medium|high|xhigh|max);
+    # max_tokens needs headroom because thinking is always on and counts toward the same budget.
+    anthropic_effort: str = "low"
+    anthropic_max_tokens: int = 16000
+    anthropic_fallback_model: str = "claude-opus-4-8"
 
     # Per-agent models (see .env.example)
     strong_model: str = "google/gemini-2.0-flash-exp:free"
