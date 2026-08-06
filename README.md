@@ -8,6 +8,11 @@ confidence score and quotes traced back to the sources they came from.
 
 **Runs on your own API key** — see [Setup](#setup). There is no hosted demo and no bundled key.
 
+![Tribunal in action](docs/media/demo.gif)
+
+*Real run: sub-claims, six retrieval calls, both advocates arguing in parallel, one fabricated quote
+struck from the record, verdict. [Full-quality MP4](docs/media/demo.mp4).*
+
 ```
 $ tribunal "The Great Wall of China is visible from space with the naked eye"
 
